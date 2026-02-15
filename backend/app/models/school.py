@@ -55,6 +55,7 @@ class School(Base):
     fees_groups = relationship("FeesGroup", back_populates="school", cascade="all, delete-orphan")
     fees_masters = relationship("FeesMaster", back_populates="school", cascade="all, delete-orphan")
     fees_discounts = relationship("FeesDiscount", back_populates="school", cascade="all, delete-orphan")
+    subjects = relationship("Subject", back_populates="school", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<School(id={self.id}, name='{self.name}', code='{self.code}')>"

@@ -5,18 +5,29 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { canAccess } from '@/lib/roles'
 import api from '@/lib/api'
-import { Plus, BookOpen, Loader2 } from 'lucide-react'
+import { Plus, BookOpen, Loader2, Settings } from 'lucide-react'
+
+interface ClassSubjectItem {
+  id: number
+  subject_id: number
+  subject: {
+    id: number
+    name: string
+    code: string
+  } | null
+}
 
 interface ClassItem {
   id: number
   name: string
-  subject: string
+  subject: string | null
   grade_level: string
   academic_year: string
   term: string | null
   section: string | null
   max_students: number
   is_active: boolean
+  class_subjects: ClassSubjectItem[]
   created_at: string
 }
 
@@ -56,7 +67,7 @@ export default function ClassesPage() {
             {canCreate ? 'Classes' : 'My Classes'}
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            {canCreate ? 'Manage your classes and courses' : 'View your enrolled classes'}
+            {canCreate ? 'Manage your classes and assign subjects' : 'View your enrolled classes'}
           </p>
         </div>
         {canCreate && (
@@ -92,19 +103,27 @@ export default function ClassesPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50">
                   <BookOpen className="h-5 w-5 text-primary-600" />
                 </div>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    cls.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {cls.is_active ? 'Active' : 'Inactive'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      cls.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {cls.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                  {canCreate && (
+                    <Link
+                      href={`/dashboard/classes/${cls.id}/subjects`}
+                      className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      title="Manage subjects"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Link>
+                  )}
+                </div>
               </div>
               <h3 className="mt-3 text-base font-semibold text-gray-900">{cls.name}</h3>
               <div className="mt-2 space-y-1">
-                <p className="text-sm text-gray-500">
-                  <span className="font-medium text-gray-700">Subject:</span> {cls.subject}
-                </p>
                 <p className="text-sm text-gray-500">
                   <span className="font-medium text-gray-700">Grade:</span> {cls.grade_level}
                 </p>
@@ -112,6 +131,22 @@ export default function ClassesPage() {
                   <span className="font-medium text-gray-700">Year:</span> {cls.academic_year}
                   {cls.term && ` - ${cls.term}`}
                 </p>
+              </div>
+
+              {/* Subject badges */}
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {cls.class_subjects && cls.class_subjects.length > 0 ? (
+                  cls.class_subjects.map((cs) => (
+                    <span
+                      key={cs.id}
+                      className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+                    >
+                      {cs.subject?.name || 'Unknown'}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-400">No subjects assigned</span>
+                )}
               </div>
             </div>
           ))}

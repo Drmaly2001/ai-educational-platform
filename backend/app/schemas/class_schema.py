@@ -2,14 +2,15 @@
 Class Pydantic schemas for request/response validation
 """
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, List
 from datetime import datetime
+
+from app.schemas.subject import ClassSubjectResponse
 
 
 class ClassBase(BaseModel):
     """Base class schema"""
     name: str = Field(..., min_length=2, max_length=255)
-    subject: str = Field(..., min_length=1, max_length=100)
     grade_level: str = Field(..., min_length=1, max_length=50)
     academic_year: str = Field(..., min_length=4, max_length=20)
     term: Optional[str] = None
@@ -20,6 +21,7 @@ class ClassCreate(ClassBase):
     """Schema for creating a new class"""
     school_id: int
     code: Optional[str] = Field(None, max_length=50)
+    subject: Optional[str] = Field(None, max_length=100)
     teacher_id: Optional[int] = None
     syllabus_id: Optional[int] = None
     max_students: int = Field(default=50, ge=1)
@@ -29,7 +31,7 @@ class ClassUpdate(BaseModel):
     """Schema for updating a class"""
     name: Optional[str] = Field(None, min_length=2, max_length=255)
     code: Optional[str] = Field(None, max_length=50)
-    subject: Optional[str] = Field(None, min_length=1, max_length=100)
+    subject: Optional[str] = Field(None, max_length=100)
     grade_level: Optional[str] = Field(None, min_length=1, max_length=50)
     academic_year: Optional[str] = Field(None, min_length=4, max_length=20)
     term: Optional[str] = None
@@ -45,6 +47,7 @@ class ClassInDB(ClassBase):
     id: int
     school_id: int
     code: Optional[str]
+    subject: Optional[str] = None
     teacher_id: Optional[int]
     syllabus_id: Optional[int]
     max_students: int
@@ -58,4 +61,4 @@ class ClassInDB(ClassBase):
 
 class ClassResponse(ClassInDB):
     """Schema for class response"""
-    pass
+    class_subjects: List[ClassSubjectResponse] = []

@@ -16,7 +16,7 @@ class Class(Base):
     school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     code = Column(String(50))
-    subject = Column(String(100), nullable=False, index=True)
+    subject = Column(String(100), nullable=True, index=True)
     grade_level = Column(String(50), nullable=False, index=True)
     academic_year = Column(String(20), nullable=False, index=True)
     term = Column(String(50))
@@ -37,6 +37,7 @@ class Class(Base):
     school = relationship("School", back_populates="classes")
     syllabus = relationship("Syllabus", back_populates="classes")
     lessons = relationship("Lesson", back_populates="class_obj", cascade="all, delete-orphan")
+    class_subjects = relationship("ClassSubject", back_populates="class_obj", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Class(id={self.id}, name='{self.name}', subject='{self.subject}')>"

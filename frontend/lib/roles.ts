@@ -29,6 +29,7 @@ export interface QuickAction {
 
 const allNavItems: Record<string, NavItem> = {
   dashboard: { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  subjects: { name: 'Subjects', href: '/dashboard/subjects', icon: GraduationCap },
   classes: { name: 'Classes', href: '/dashboard/classes', icon: BookOpen },
   syllabi: { name: 'Syllabi', href: '/dashboard/syllabi', icon: FileText },
   lessons: { name: 'Lessons', href: '/dashboard/lessons', icon: ClipboardList },
@@ -45,6 +46,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
     allNavItems.dashboard,
     allNavItems.schools,
     allNavItems.users,
+    allNavItems.subjects,
     allNavItems.classes,
     allNavItems.syllabi,
     allNavItems.lessons,
@@ -53,6 +55,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
   school_admin: [
     allNavItems.dashboard,
     allNavItems.users,
+    allNavItems.subjects,
     allNavItems.classes,
     allNavItems.syllabi,
     allNavItems.lessons,
@@ -114,6 +117,8 @@ const featurePermissions: Record<string, UserRole[]> = {
   'lessons:edit': ['super_admin', 'school_admin', 'teacher'],
   'users:manage': ['super_admin', 'school_admin'],
   'schools:manage': ['super_admin'],
+  'subjects:manage': ['super_admin', 'school_admin'],
+  'subjects:view': ['super_admin', 'school_admin', 'teacher'],
   'fees:manage': ['super_admin', 'school_admin'],
   'fees:collect': ['super_admin', 'school_admin'],
   'fees:view': ['super_admin', 'school_admin', 'student', 'parent'],

@@ -2,14 +2,16 @@
 Class management endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, require_teacher
 from app.models.user import User
 from app.models.class_model import Class
+from app.models.subject import ClassSubject, Subject
 from app.schemas.class_schema import ClassCreate, ClassUpdate, ClassResponse
+from app.schemas.subject import ClassSubjectCreate, ClassSubjectResponse, BulkAssignSubjects
 
 
 router = APIRouter()
@@ -29,7 +31,9 @@ def list_classes(
     """
     List classes. Teachers see their own classes, admins see all in their school.
     """
-    query = db.query(Class)
+    query = db.query(Class).options(
+        joinedload(Class.class_subjects).joinedload(ClassSubject.subject)
+    )
 
     # Role-based filtering
     if current_user.role == "teacher":
@@ -40,7 +44,7 @@ def list_classes(
         query = query.filter(Class.school_id == school_id)
 
     if subject is not None:
-        query = query.filter(Class.subject == subject)
+        query = query.join(ClassSubject).join(Subject).filter(Subject.name == subject)
 
     if grade_level is not None:
         query = query.filter(Class.grade_level == grade_level)
@@ -61,7 +65,9 @@ def get_class(
     """
     Get class by ID
     """
-    cls = db.query(Class).filter(Class.id == class_id).first()
+    cls = db.query(Class).options(
+        joinedload(Class.class_subjects).joinedload(ClassSubject.subject)
+    ).filter(Class.id == class_id).first()
 
     if not cls:
         raise HTTPException(
@@ -69,7 +75,6 @@ def get_class(
             detail="Class not found"
         )
 
-    # Authorization: teachers can only view their own classes
     if current_user.role == "teacher" and cls.teacher_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -94,7 +99,6 @@ def create_class(
     """
     Create a new class (teacher+)
     """
-    # Teachers can only create classes for their own school
     if current_user.role == "teacher":
         if class_data.school_id != current_user.school_id:
             raise HTTPException(
@@ -133,7 +137,6 @@ def update_class(
             detail="Class not found"
         )
 
-    # Teachers can only update their own classes
     if current_user.role == "teacher" and cls.teacher_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -174,6 +177,128 @@ def delete_class(
         )
 
     db.delete(cls)
+    db.commit()
+
+    return None
+
+
+# ---- Class-Subject Assignment Endpoints ----
+
+
+@router.get("/{class_id}/subjects", response_model=List[ClassSubjectResponse])
+def list_class_subjects(
+    class_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """List subjects assigned to a class"""
+    cls = db.query(Class).filter(Class.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+
+    class_subjects = db.query(ClassSubject).options(
+        joinedload(ClassSubject.subject)
+    ).filter(ClassSubject.class_id == class_id).all()
+
+    return class_subjects
+
+
+@router.post("/{class_id}/subjects", response_model=ClassSubjectResponse, status_code=status.HTTP_201_CREATED)
+def assign_subject_to_class(
+    class_id: int,
+    data: ClassSubjectCreate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Assign a subject to a class"""
+    cls = db.query(Class).filter(Class.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+
+    subject = db.query(Subject).filter(Subject.id == data.subject_id).first()
+    if not subject:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found")
+
+    # Check for duplicate
+    existing = db.query(ClassSubject).filter(
+        ClassSubject.class_id == class_id,
+        ClassSubject.subject_id == data.subject_id
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subject already assigned to this class"
+        )
+
+    class_subject = ClassSubject(
+        class_id=class_id,
+        subject_id=data.subject_id,
+        teacher_id=data.teacher_id
+    )
+    db.add(class_subject)
+    db.commit()
+    db.refresh(class_subject)
+
+    # Load the subject relationship for response
+    db.refresh(class_subject, ["subject"])
+
+    return class_subject
+
+
+@router.post("/{class_id}/subjects/bulk", response_model=List[ClassSubjectResponse])
+def bulk_assign_subjects(
+    class_id: int,
+    data: BulkAssignSubjects,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Assign multiple subjects to a class at once"""
+    cls = db.query(Class).filter(Class.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+
+    results = []
+    for subject_id in data.subject_ids:
+        # Skip duplicates
+        existing = db.query(ClassSubject).filter(
+            ClassSubject.class_id == class_id,
+            ClassSubject.subject_id == subject_id
+        ).first()
+        if existing:
+            continue
+
+        subject = db.query(Subject).filter(Subject.id == subject_id).first()
+        if not subject:
+            continue
+
+        cs = ClassSubject(class_id=class_id, subject_id=subject_id)
+        db.add(cs)
+        results.append(cs)
+
+    db.commit()
+    for cs in results:
+        db.refresh(cs, ["subject"])
+
+    return results
+
+
+@router.delete("/{class_id}/subjects/{subject_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_subject_from_class(
+    class_id: int,
+    subject_id: int,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Remove a subject from a class"""
+    class_subject = db.query(ClassSubject).filter(
+        ClassSubject.class_id == class_id,
+        ClassSubject.subject_id == subject_id
+    ).first()
+
+    if not class_subject:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subject not assigned to this class")
+
+    db.delete(class_subject)
     db.commit()
 
     return None

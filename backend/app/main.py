@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.models import User, School, Class, Syllabus, Lesson  # Import all models
+from app.models import User, School, Class, Syllabus, Lesson, Subject, ClassSubject  # Import all models
 from datetime import datetime
 import logging
 

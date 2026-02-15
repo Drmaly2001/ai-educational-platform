@@ -13,7 +13,6 @@ import api from '@/lib/api'
 
 const classSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  subject: z.string().min(1, 'Subject is required'),
   grade_level: z.string().min(1, 'Grade level is required'),
   academic_year: z.string().min(4, 'Academic year is required'),
   term: z.string().optional(),
@@ -55,11 +54,11 @@ export default function CreateClassPage() {
     setApiError(null)
 
     try {
-      await api.post('/classes/', {
+      const res = await api.post('/classes/', {
         ...data,
         school_id: user?.school_id || 1,
       })
-      router.push('/dashboard/classes')
+      router.push(`/dashboard/classes/${res.data.id}/subjects`)
     } catch (error: any) {
       const message =
         error.response?.data?.detail || 'Failed to create class. Please try again.'
@@ -78,7 +77,7 @@ export default function CreateClassPage() {
           Back to Classes
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">Create Class</h1>
-        <p className="mt-1 text-sm text-gray-500">Set up a new class for your students</p>
+        <p className="mt-1 text-sm text-gray-500">Set up a new class, then assign subjects to it</p>
       </div>
 
       <div className="max-w-2xl rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-100">
@@ -97,7 +96,7 @@ export default function CreateClassPage() {
             <input
               id="name"
               type="text"
-              placeholder="e.g., Mathematics 10A"
+              placeholder="e.g., Grade 10A"
               className={`block w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                 errors.name ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
               }`}
@@ -106,24 +105,8 @@ export default function CreateClassPage() {
             {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
           </div>
 
-          {/* Subject & Grade Level */}
+          {/* Grade Level & Academic Year */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="subject" className="mb-1.5 block text-sm font-medium text-gray-700">
-                Subject
-              </label>
-              <input
-                id="subject"
-                type="text"
-                placeholder="e.g., Mathematics"
-                className={`block w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                  errors.subject ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                }`}
-                {...register('subject')}
-              />
-              {errors.subject && <p className="mt-1 text-xs text-red-600">{errors.subject.message}</p>}
-            </div>
-
             <div>
               <label htmlFor="grade_level" className="mb-1.5 block text-sm font-medium text-gray-700">
                 Grade Level
@@ -147,10 +130,7 @@ export default function CreateClassPage() {
               </select>
               {errors.grade_level && <p className="mt-1 text-xs text-red-600">{errors.grade_level.message}</p>}
             </div>
-          </div>
 
-          {/* Academic Year & Term */}
-          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="academic_year" className="mb-1.5 block text-sm font-medium text-gray-700">
                 Academic Year
@@ -174,7 +154,10 @@ export default function CreateClassPage() {
               </select>
               {errors.academic_year && <p className="mt-1 text-xs text-red-600">{errors.academic_year.message}</p>}
             </div>
+          </div>
 
+          {/* Term & Section */}
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="term" className="mb-1.5 block text-sm font-medium text-gray-700">
                 Term (optional)
@@ -193,10 +176,7 @@ export default function CreateClassPage() {
                 <option value="Full Year">Full Year</option>
               </select>
             </div>
-          </div>
 
-          {/* Section & Max Students */}
-          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="section" className="mb-1.5 block text-sm font-medium text-gray-700">
                 Section (optional)
@@ -209,22 +189,23 @@ export default function CreateClassPage() {
                 {...register('section')}
               />
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="max_students" className="mb-1.5 block text-sm font-medium text-gray-700">
-                Max Students
-              </label>
-              <input
-                id="max_students"
-                type="number"
-                min={1}
-                className={`block w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                  errors.max_students ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                }`}
-                {...register('max_students')}
-              />
-              {errors.max_students && <p className="mt-1 text-xs text-red-600">{errors.max_students.message}</p>}
-            </div>
+          {/* Max Students */}
+          <div className="max-w-xs">
+            <label htmlFor="max_students" className="mb-1.5 block text-sm font-medium text-gray-700">
+              Max Students
+            </label>
+            <input
+              id="max_students"
+              type="number"
+              min={1}
+              className={`block w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                errors.max_students ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+              }`}
+              {...register('max_students')}
+            />
+            {errors.max_students && <p className="mt-1 text-xs text-red-600">{errors.max_students.message}</p>}
           </div>
 
           {/* Actions */}
@@ -240,7 +221,7 @@ export default function CreateClassPage() {
                   Creating...
                 </>
               ) : (
-                'Create Class'
+                'Create Class & Assign Subjects'
               )}
             </button>
             <Link href="/dashboard/classes" className="btn-secondary">

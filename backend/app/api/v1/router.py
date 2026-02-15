@@ -3,7 +3,7 @@ Main API v1 router
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, users, schools, classes, syllabi, lessons, ai, fees
+from app.api.v1.endpoints import auth, users, schools, classes, subjects, syllabi, lessons, ai, fees
 
 
 api_router = APIRouter()
@@ -31,6 +31,12 @@ api_router.include_router(
     classes.router,
     prefix="/classes",
     tags=["Classes"]
+)
+
+api_router.include_router(
+    subjects.router,
+    prefix="/subjects",
+    tags=["Subjects"]
 )
 
 api_router.include_router(
