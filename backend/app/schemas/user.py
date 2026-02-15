@@ -27,10 +27,9 @@ class UserCreate(UserBase):
     """Schema for creating a new user"""
     password: str = Field(..., min_length=8, max_length=100)
     school_id: Optional[int] = None
-    
+
     @validator('password')
     def validate_password(cls, v):
-        """Validate password strength"""
         if not any(char.isdigit() for char in v):
             raise ValueError('Password must contain at least one digit')
         if not any(char.isupper() for char in v):
@@ -53,10 +52,9 @@ class UserUpdatePassword(BaseModel):
     """Schema for updating user password"""
     current_password: str
     new_password: str = Field(..., min_length=8, max_length=100)
-    
+
     @validator('new_password')
     def validate_password(cls, v):
-        """Validate password strength"""
         if not any(char.isdigit() for char in v):
             raise ValueError('Password must contain at least one digit')
         if not any(char.isupper() for char in v):
@@ -66,22 +64,25 @@ class UserUpdatePassword(BaseModel):
         return v
 
 
-class UserInDB(UserBase):
+class UserInDB(BaseModel):
     """Schema for user in database"""
     id: int
+    email: EmailStr
+    full_name: str
+    role: str
     is_active: bool
     is_verified: bool
     school_id: Optional[int]
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime]
-    
+
     class Config:
         from_attributes = True
 
 
 class UserResponse(UserInDB):
-    """Schema for user response (excludes sensitive data)"""
+    """Schema for user response"""
     pass
 
 

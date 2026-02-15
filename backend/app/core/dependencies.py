@@ -28,7 +28,7 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
         token = credentials.credentials
         payload = jwt.decode(
@@ -38,26 +38,26 @@ def get_current_user(
         )
         user_id: int = payload.get("sub")
         email: str = payload.get("email")
-        
+
         if user_id is None:
             raise credentials_exception
-            
+
         token_data = TokenData(user_id=user_id, email=email)
-        
+
     except JWTError:
         raise credentials_exception
-    
+
     user = db.query(User).filter(User.id == token_data.user_id).first()
-    
+
     if user is None:
         raise credentials_exception
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user"
         )
-    
+
     return user
 
 
@@ -80,7 +80,8 @@ def require_role(required_roles: list[UserRole]):
     Dependency factory to require specific user roles
     """
     def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
-        if current_user.role not in [role.value for role in required_roles]:
+        required_values = [role.value for role in required_roles]
+        if current_user.role not in required_values:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"User role '{current_user.role}' is not authorized for this action"
@@ -109,7 +110,7 @@ def require_school_admin(
     """
     Require school admin or super admin role
     """
-    if current_user.role not in [UserRole.SUPER_ADMIN.value, UserRole.SCHOOL_ADMIN.value]:
+    if current_user.role not in (UserRole.SUPER_ADMIN.value, UserRole.SCHOOL_ADMIN.value):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="School admin access required"
@@ -123,11 +124,11 @@ def require_teacher(
     """
     Require teacher, school admin, or super admin role
     """
-    if current_user.role not in [
+    if current_user.role not in (
         UserRole.SUPER_ADMIN.value,
         UserRole.SCHOOL_ADMIN.value,
         UserRole.TEACHER.value
-    ]:
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Teacher access required"
@@ -144,7 +145,7 @@ def get_optional_current_user(
     """
     if not credentials:
         return None
-    
+
     try:
         token = credentials.credentials
         payload = jwt.decode(
@@ -153,12 +154,12 @@ def get_optional_current_user(
             algorithms=[settings.JWT_ALGORITHM]
         )
         user_id: int = payload.get("sub")
-        
+
         if user_id is None:
             return None
-        
+
         user = db.query(User).filter(User.id == user_id).first()
         return user if user and user.is_active else None
-        
+
     except JWTError:
         return None

@@ -1,7 +1,7 @@
 """
 Lesson database model
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, ARRAY, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -23,12 +23,12 @@ class Lesson(Base):
     difficulty_level = Column(String(50))  # beginner, intermediate, advanced
     duration_minutes = Column(Integer, default=60)
     
-    learning_goals = Column(ARRAY(Text), nullable=False)
-    prerequisites = Column(ARRAY(Text))
+    learning_goals = Column(JSON, nullable=False)
+    prerequisites = Column(JSON)
     explanation = Column(Text, nullable=False)
     examples = Column(JSON)  # JSON array of examples
     activities = Column(JSON)  # JSON array of activities
-    discussion_questions = Column(ARRAY(Text))
+    discussion_questions = Column(JSON)
     homework = Column(Text)
     resources = Column(JSON, default=[])
     differentiated_versions = Column(JSON)  # Different versions for different ability levels

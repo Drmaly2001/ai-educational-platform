@@ -17,16 +17,16 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/v1"
     
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./edu_platform.db"
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
-    
+
     # Redis
-    REDIS_URL: str
+    REDIS_URL: Optional[str] = None
     REDIS_MAX_CONNECTIONS: int = 50
-    
+
     # Anthropic Claude
-    ANTHROPIC_API_KEY: str
+    ANTHROPIC_API_KEY: str = ""
     CLAUDE_MODEL: str = "claude-3-sonnet-20240229"
     CLAUDE_MAX_TOKENS: int = 4096
     

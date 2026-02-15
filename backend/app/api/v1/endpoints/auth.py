@@ -28,10 +28,10 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Create new user
     hashed_password = get_password_hash(user_data.password)
-    
+
     new_user = User(
         email=user_data.email,
         full_name=user_data.full_name,
@@ -41,11 +41,11 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         is_active=True,
         is_verified=False
     )
-    
+
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
+
     return new_user
 
 
@@ -56,14 +56,14 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
     """
     # Find user by email
     user = db.query(User).filter(User.email == user_credentials.email).first()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Verify password
     if not verify_password(user_credentials.password, user.hashed_password):
         raise HTTPException(
@@ -71,18 +71,18 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Check if user is active
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
-    
+
     # Update last login
     user.last_login = datetime.utcnow()
     db.commit()
-    
+
     # Create tokens
     access_token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role}
@@ -90,7 +90,7 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
     refresh_token = create_refresh_token(
         data={"sub": str(user.id)}
     )
-    
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -108,7 +108,7 @@ def refresh_token(token_data: RefreshToken, db: Session = Depends(get_db)):
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
         payload = jwt.decode(
             token_data.refresh_token,
@@ -116,25 +116,25 @@ def refresh_token(token_data: RefreshToken, db: Session = Depends(get_db)):
             algorithms=[settings.JWT_ALGORITHM]
         )
         user_id: str = payload.get("sub")
-        
+
         if user_id is None:
             raise credentials_exception
-            
+
     except JWTError:
         raise credentials_exception
-    
+
     # Get user from database
     user = db.query(User).filter(User.id == int(user_id)).first()
-    
+
     if user is None:
         raise credentials_exception
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
-    
+
     # Create new tokens
     access_token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role}
@@ -142,7 +142,7 @@ def refresh_token(token_data: RefreshToken, db: Session = Depends(get_db)):
     new_refresh_token = create_refresh_token(
         data={"sub": str(user.id)}
     )
-    
+
     return {
         "access_token": access_token,
         "refresh_token": new_refresh_token,

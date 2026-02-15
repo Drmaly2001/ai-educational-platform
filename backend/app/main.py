@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.models import User, School, Class, Syllabus, Lesson  # Import all models
+from datetime import datetime
 import logging
 
 # Configure logging
@@ -91,8 +92,7 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 if __name__ == "__main__":
     import uvicorn
-    from datetime import datetime
-    
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

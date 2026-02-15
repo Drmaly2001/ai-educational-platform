@@ -2,12 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { GraduationCap, Eye, EyeOff, Loader2 } from 'lucide-react'
-import api from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -17,7 +16,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
-  const router = useRouter()
+  const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
 
@@ -33,13 +32,7 @@ export default function LoginPage() {
     setApiError(null)
 
     try {
-      const response = await api.post('/auth/login', data)
-      const { access_token, refresh_token } = response.data
-
-      localStorage.setItem('access_token', access_token)
-      localStorage.setItem('refresh_token', refresh_token)
-
-      router.push('/dashboard')
+      await login(data.email, data.password)
     } catch (error: any) {
       const message =
         error.response?.data?.detail || 'Something went wrong. Please try again.'

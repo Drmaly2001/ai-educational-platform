@@ -227,7 +227,7 @@ def update_user(
     
     if user_update.role is not None:
         user.role = user_update.role.value
-    
+
     if user_update.is_active is not None:
         user.is_active = user_update.is_active
     

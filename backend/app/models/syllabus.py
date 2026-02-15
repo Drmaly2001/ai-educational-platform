@@ -1,7 +1,7 @@
 """
 Syllabus database model
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, ARRAY, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -22,7 +22,7 @@ class Syllabus(Base):
     curriculum_standard = Column(String(50), nullable=False)  # IGCSE, IB, Common Core, etc.
     duration_weeks = Column(Integer, nullable=False)
     
-    learning_objectives = Column(ARRAY(Text), nullable=False)
+    learning_objectives = Column(JSON, nullable=False)
     weekly_breakdown = Column(JSON, nullable=False)  # JSON structure with weekly plans
     assessment_plan = Column(JSON, nullable=False)  # JSON structure with assessment schedule
     revision_schedule = Column(JSON)

@@ -8,12 +8,22 @@ from typing import Generator
 from app.core.config import settings
 
 # Create database engine
+connect_args = {}
+engine_kwargs = {
+    "echo": settings.DEBUG,
+}
+
+if settings.DATABASE_URL.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+else:
+    engine_kwargs["pool_size"] = settings.DATABASE_POOL_SIZE
+    engine_kwargs["max_overflow"] = settings.DATABASE_MAX_OVERFLOW
+    engine_kwargs["pool_pre_ping"] = True
+
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    pool_pre_ping=True,
-    echo=settings.DEBUG
+    connect_args=connect_args,
+    **engine_kwargs,
 )
 
 # Create session factory
@@ -26,11 +36,6 @@ Base = declarative_base()
 def get_db() -> Generator[Session, None, None]:
     """
     Dependency for getting database session
-    
-    Usage:
-        @app.get("/users")
-        def get_users(db: Session = Depends(get_db)):
-            return db.query(User).all()
     """
     db = SessionLocal()
     try:
