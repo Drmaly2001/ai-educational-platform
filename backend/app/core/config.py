@@ -25,10 +25,17 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = None
     REDIS_MAX_CONNECTIONS: int = 50
 
-    # Anthropic Claude
+    # AI Providers (system tries each in order until one works)
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_MODEL: str = "claude-sonnet-4-5-20250929"
-    CLAUDE_MAX_TOKENS: int = 4096
+
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o"
+
+    XAI_API_KEY: str = ""
+    XAI_MODEL: str = "grok-3"
+
+    AI_MAX_TOKENS: int = 4096
     
     # JWT
     JWT_SECRET: str

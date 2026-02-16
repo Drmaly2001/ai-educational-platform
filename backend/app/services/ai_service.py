@@ -1,10 +1,13 @@
 """
-AI Service for generating educational content using Anthropic Claude API
-Uses httpx directly to avoid SDK/Pydantic version conflicts.
+AI Service for generating educational content.
+Supports multiple providers with automatic fallback:
+  1. Anthropic Claude
+  2. OpenAI GPT
+  3. xAI Grok
 """
 import json
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 import httpx
 
@@ -12,21 +15,50 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+
+def _get_providers() -> List[Tuple[str, str, str, str]]:
+    """Return list of (name, api_url, api_key, model) for configured providers."""
+    providers = []
+
+    if settings.ANTHROPIC_API_KEY:
+        providers.append((
+            "Claude",
+            "https://api.anthropic.com/v1/messages",
+            settings.ANTHROPIC_API_KEY,
+            settings.CLAUDE_MODEL,
+        ))
+
+    if settings.OPENAI_API_KEY:
+        providers.append((
+            "OpenAI",
+            "https://api.openai.com/v1/chat/completions",
+            settings.OPENAI_API_KEY,
+            settings.OPENAI_MODEL,
+        ))
+
+    if settings.XAI_API_KEY:
+        providers.append((
+            "xAI",
+            "https://api.x.ai/v1/chat/completions",
+            settings.XAI_API_KEY,
+            settings.XAI_MODEL,
+        ))
+
+    return providers
 
 
-def _call_claude(prompt: str) -> str:
-    """Call Claude API and return the text response."""
+def _call_anthropic(api_key: str, model: str, prompt: str) -> str:
+    """Call Anthropic Claude API."""
     response = httpx.post(
-        ANTHROPIC_API_URL,
+        "https://api.anthropic.com/v1/messages",
         headers={
-            "x-api-key": settings.ANTHROPIC_API_KEY,
+            "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
         },
         json={
-            "model": settings.CLAUDE_MODEL,
-            "max_tokens": settings.CLAUDE_MAX_TOKENS,
+            "model": model,
+            "max_tokens": settings.AI_MAX_TOKENS,
             "messages": [{"role": "user", "content": prompt}],
         },
         timeout=120.0,
@@ -34,6 +66,77 @@ def _call_claude(prompt: str) -> str:
     response.raise_for_status()
     data = response.json()
     return data["content"][0]["text"].strip()
+
+
+def _call_openai(api_key: str, model: str, prompt: str) -> str:
+    """Call OpenAI GPT API."""
+    response = httpx.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "max_tokens": settings.AI_MAX_TOKENS,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=120.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data["choices"][0]["message"]["content"].strip()
+
+
+def _call_xai(api_key: str, model: str, prompt: str) -> str:
+    """Call xAI Grok API (OpenAI-compatible)."""
+    response = httpx.post(
+        "https://api.x.ai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "max_tokens": settings.AI_MAX_TOKENS,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=120.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data["choices"][0]["message"]["content"].strip()
+
+
+def _call_ai(prompt: str) -> str:
+    """
+    Try each configured AI provider in order.
+    Returns the first successful response.
+    Raises RuntimeError if all providers fail.
+    """
+    providers = _get_providers()
+
+    if not providers:
+        raise RuntimeError("No AI providers configured. Set at least one API key in .env")
+
+    errors = []
+    for name, url, api_key, model in providers:
+        try:
+            logger.info(f"Trying AI provider: {name} ({model})")
+            if name == "Claude":
+                return _call_anthropic(api_key, model, prompt)
+            elif name == "OpenAI":
+                return _call_openai(api_key, model, prompt)
+            elif name == "xAI":
+                return _call_xai(api_key, model, prompt)
+        except Exception as e:
+            logger.warning(f"{name} failed: {type(e).__name__}: {e}")
+            errors.append(f"{name}: {type(e).__name__}: {e}")
+            continue
+
+    raise RuntimeError(
+        f"All AI providers failed:\n" + "\n".join(f"  - {err}" for err in errors)
+    )
 
 
 def _extract_json(text: str) -> Dict[str, Any]:
@@ -62,9 +165,7 @@ def generate_syllabus(
     learning_objectives: Optional[List[str]] = None,
     additional_instructions: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Generate a complete syllabus using Claude AI.
-    """
+    """Generate a complete syllabus using AI."""
     objectives_text = ""
     if learning_objectives:
         objectives_text = f"\nKey learning objectives to include:\n" + "\n".join(
@@ -127,7 +228,7 @@ Ensure the weekly_breakdown has exactly {duration_weeks} entries (one per week).
 Make content age-appropriate for {grade_level} students.
 Align with {curriculum_standard} standards."""
 
-    response_text = _call_claude(prompt)
+    response_text = _call_ai(prompt)
     return _extract_json(response_text)
 
 
@@ -140,9 +241,7 @@ def generate_lesson(
     difficulty_level: str = "intermediate",
     additional_instructions: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Generate a detailed lesson plan using Claude AI.
-    """
+    """Generate a detailed lesson plan using AI."""
     goals_text = "\n".join(f"- {g}" for g in learning_goals)
 
     extra = ""
@@ -197,5 +296,5 @@ Make the content engaging and age-appropriate for {grade_level} students.
 Include at least 2 examples and 2 activities.
 The explanation should be thorough but accessible."""
 
-    response_text = _call_claude(prompt)
+    response_text = _call_ai(prompt)
     return _extract_json(response_text)
