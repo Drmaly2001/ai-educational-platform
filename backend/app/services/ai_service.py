@@ -4,6 +4,8 @@ Supports multiple providers with automatic fallback:
   1. Anthropic Claude
   2. OpenAI GPT
   3. xAI Grok
+  4. Google Gemini
+  5. DeepSeek
 """
 import json
 import logging
@@ -42,6 +44,22 @@ def _get_providers() -> List[Tuple[str, str, str, str]]:
             "https://api.x.ai/v1/chat/completions",
             settings.XAI_API_KEY,
             settings.XAI_MODEL,
+        ))
+
+    if settings.GEMINI_API_KEY:
+        providers.append((
+            "Gemini",
+            "https://generativelanguage.googleapis.com/v1beta",
+            settings.GEMINI_API_KEY,
+            settings.GEMINI_MODEL,
+        ))
+
+    if settings.DEEPSEEK_API_KEY:
+        providers.append((
+            "DeepSeek",
+            "https://api.deepseek.com/v1/chat/completions",
+            settings.DEEPSEEK_API_KEY,
+            settings.DEEPSEEK_MODEL,
         ))
 
     return providers
@@ -108,6 +126,45 @@ def _call_xai(api_key: str, model: str, prompt: str) -> str:
     return data["choices"][0]["message"]["content"].strip()
 
 
+def _call_gemini(api_key: str, model: str, prompt: str) -> str:
+    """Call Google Gemini API."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    response = httpx.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json={
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "maxOutputTokens": settings.AI_MAX_TOKENS,
+            },
+        },
+        timeout=120.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+
+def _call_deepseek(api_key: str, model: str, prompt: str) -> str:
+    """Call DeepSeek API (OpenAI-compatible)."""
+    response = httpx.post(
+        "https://api.deepseek.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "max_tokens": settings.AI_MAX_TOKENS,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=120.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data["choices"][0]["message"]["content"].strip()
+
+
 def _call_ai(prompt: str) -> str:
     """
     Try each configured AI provider in order.
@@ -129,6 +186,10 @@ def _call_ai(prompt: str) -> str:
                 return _call_openai(api_key, model, prompt)
             elif name == "xAI":
                 return _call_xai(api_key, model, prompt)
+            elif name == "Gemini":
+                return _call_gemini(api_key, model, prompt)
+            elif name == "DeepSeek":
+                return _call_deepseek(api_key, model, prompt)
         except Exception as e:
             logger.warning(f"{name} failed: {type(e).__name__}: {e}")
             errors.append(f"{name}: {type(e).__name__}: {e}")

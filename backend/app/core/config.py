@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     XAI_API_KEY: str = ""
     XAI_MODEL: str = "grok-3"
 
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+
     AI_MAX_TOKENS: int = 4096
     
     # JWT
