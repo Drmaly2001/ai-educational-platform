@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -11,9 +11,27 @@ import { useAuth } from '@/lib/auth'
 import { canAccess } from '@/lib/roles'
 import api from '@/lib/api'
 
+interface ClassSubjectItem {
+  id: number
+  subject_id: number
+  subject: {
+    id: number
+    name: string
+    code: string
+  } | null
+}
+
+interface ClassItem {
+  id: number
+  name: string
+  grade_level: string
+  academic_year: string
+  class_subjects: ClassSubjectItem[]
+}
+
 const generateSchema = z.object({
+  class_id: z.string().min(1, 'Class is required'),
   subject: z.string().min(1, 'Subject is required'),
-  grade_level: z.string().min(1, 'Grade level is required'),
   curriculum_standard: z.string().min(1, 'Curriculum standard is required'),
   duration_weeks: z.coerce.number().min(1).max(52, 'Duration must be 1-52 weeks'),
   additional_instructions: z.string().optional(),
@@ -27,6 +45,9 @@ export default function GenerateSyllabusPage() {
   const [apiError, setApiError] = useState<string | null>(null)
   const [objectives, setObjectives] = useState<string[]>([])
   const [objectiveInput, setObjectiveInput] = useState('')
+  const [classes, setClasses] = useState<ClassItem[]>([])
+  const [loadingClasses, setLoadingClasses] = useState(true)
+  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null)
 
   if (!canAccess(user?.role || '', 'syllabi:generate')) {
     return (
@@ -39,16 +60,47 @@ export default function GenerateSyllabusPage() {
     )
   }
 
+  useEffect(() => {
+    async function fetchClasses() {
+      try {
+        const res = await api.get('/classes/')
+        setClasses(res.data)
+      } catch {
+        // ignore
+      } finally {
+        setLoadingClasses(false)
+      }
+    }
+    fetchClasses()
+  }, [])
+
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<GenerateFormData>({
     resolver: zodResolver(generateSchema),
     defaultValues: {
       duration_weeks: 12,
+      class_id: '',
+      subject: '',
     },
   })
+
+  const watchClassId = watch('class_id')
+
+  useEffect(() => {
+    if (watchClassId) {
+      const cls = classes.find((c) => String(c.id) === watchClassId)
+      setSelectedClass(cls || null)
+      setValue('subject', '')
+    } else {
+      setSelectedClass(null)
+      setValue('subject', '')
+    }
+  }, [watchClassId, classes, setValue])
 
   function addObjective() {
     const trimmed = objectiveInput.trim()
@@ -66,10 +118,16 @@ export default function GenerateSyllabusPage() {
     setApiError(null)
 
     try {
+      const cls = classes.find((c) => String(c.id) === data.class_id)
       const response = await api.post('/ai/generate-syllabus', {
-        ...data,
+        subject: data.subject,
+        grade_level: cls?.grade_level || '',
+        curriculum_standard: data.curriculum_standard,
+        duration_weeks: data.duration_weeks,
         school_id: user?.school_id || 1,
         learning_objectives: objectives.length > 0 ? objectives : undefined,
+        additional_instructions: data.additional_instructions,
+        class_id: parseInt(data.class_id),
       })
 
       router.push(`/dashboard/syllabi/${response.data.id}`)
@@ -79,6 +137,8 @@ export default function GenerateSyllabusPage() {
       setApiError(typeof message === 'string' ? message : JSON.stringify(message))
     }
   }
+
+  const availableSubjects = selectedClass?.class_subjects?.filter((cs) => cs.subject) || []
 
   return (
     <div>
@@ -96,7 +156,7 @@ export default function GenerateSyllabusPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Generate Syllabus with AI</h1>
-            <p className="text-sm text-gray-500">Let AI create a comprehensive syllabus for your course</p>
+            <p className="text-sm text-gray-500">Select a class and subject, then let AI create a comprehensive syllabus</p>
           </div>
         </div>
       </div>
@@ -109,54 +169,87 @@ export default function GenerateSyllabusPage() {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {/* Subject & Grade Level */}
+          {/* Class & Subject */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="subject" className="mb-1.5 block text-sm font-medium text-gray-700">
-                Subject
+              <label htmlFor="class_id" className="mb-1.5 block text-sm font-medium text-gray-700">
+                Class *
               </label>
-              <input
-                id="subject"
-                type="text"
-                placeholder="e.g., Mathematics"
-                className={`block w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                  errors.subject ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                }`}
-                {...register('subject')}
-              />
-              {errors.subject && <p className="mt-1 text-xs text-red-600">{errors.subject.message}</p>}
+              {loadingClasses ? (
+                <div className="flex items-center gap-2 py-2.5 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading classes...
+                </div>
+              ) : (
+                <select
+                  id="class_id"
+                  className={`block w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    errors.class_id ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+                  }`}
+                  {...register('class_id')}
+                >
+                  <option value="">Select a class</option>
+                  {classes.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name} — {cls.grade_level} ({cls.academic_year})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {errors.class_id && <p className="mt-1 text-xs text-red-600">{errors.class_id.message}</p>}
             </div>
 
             <div>
-              <label htmlFor="grade_level" className="mb-1.5 block text-sm font-medium text-gray-700">
-                Grade Level
+              <label htmlFor="subject" className="mb-1.5 block text-sm font-medium text-gray-700">
+                Subject *
               </label>
               <select
-                id="grade_level"
-                className={`block w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                  errors.grade_level ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+                id="subject"
+                disabled={!selectedClass}
+                className={`block w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-50 ${
+                  errors.subject ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
                 }`}
-                {...register('grade_level')}
+                {...register('subject')}
               >
-                <option value="">Select grade level</option>
-                {Array.from({ length: 12 }, (_, i) => (
-                  <option key={i + 1} value={`Grade ${i + 1}`}>
-                    Grade {i + 1}
+                <option value="">
+                  {!selectedClass
+                    ? 'Select a class first'
+                    : availableSubjects.length === 0
+                    ? 'No subjects assigned to this class'
+                    : 'Select a subject'}
+                </option>
+                {availableSubjects.map((cs) => (
+                  <option key={cs.subject_id} value={cs.subject!.name}>
+                    {cs.subject!.name} ({cs.subject!.code})
                   </option>
                 ))}
-                <option value="A-Level">A-Level</option>
-                <option value="IB">IB</option>
-                <option value="AP">AP</option>
               </select>
-              {errors.grade_level && <p className="mt-1 text-xs text-red-600">{errors.grade_level.message}</p>}
+              {errors.subject && <p className="mt-1 text-xs text-red-600">{errors.subject.message}</p>}
+              {selectedClass && availableSubjects.length === 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  <Link href={`/dashboard/classes/${selectedClass.id}/subjects`} className="underline">
+                    Assign subjects to this class first
+                  </Link>
+                </p>
+              )}
             </div>
           </div>
+
+          {/* Grade Level (read-only, auto-filled) */}
+          {selectedClass && (
+            <div className="rounded-lg bg-gray-50 px-4 py-3">
+              <p className="text-sm text-gray-600">
+                <span className="font-medium text-gray-700">Grade Level:</span> {selectedClass.grade_level}
+                <span className="mx-3 text-gray-300">|</span>
+                <span className="font-medium text-gray-700">Academic Year:</span> {selectedClass.academic_year}
+              </p>
+            </div>
+          )}
 
           {/* Curriculum Standard & Duration */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="curriculum_standard" className="mb-1.5 block text-sm font-medium text-gray-700">
-                Curriculum Standard
+                Curriculum Standard *
               </label>
               <select
                 id="curriculum_standard"

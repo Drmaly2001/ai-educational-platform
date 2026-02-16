@@ -11,6 +11,7 @@ from app.core.dependencies import require_teacher
 from app.models.user import User
 from app.models.syllabus import Syllabus
 from app.models.lesson import Lesson
+from app.models.class_model import Class
 from app.schemas.syllabus import SyllabusResponse, SyllabusGenerateRequest
 from app.schemas.lesson import LessonResponse, LessonGenerateRequest
 from app.core.config import settings
@@ -73,6 +74,13 @@ def ai_generate_syllabus(
     db.add(new_syllabus)
     db.commit()
     db.refresh(new_syllabus)
+
+    # Link the syllabus to the class if class_id was provided
+    if request.class_id:
+        cls = db.query(Class).filter(Class.id == request.class_id).first()
+        if cls:
+            cls.syllabus_id = new_syllabus.id
+            db.commit()
 
     return new_syllabus
 

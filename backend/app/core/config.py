@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # Anthropic Claude
     ANTHROPIC_API_KEY: str = ""
-    CLAUDE_MODEL: str = "claude-3-sonnet-20240229"
+    CLAUDE_MODEL: str = "claude-sonnet-4-5-20250929"
     CLAUDE_MAX_TOKENS: int = 4096
     
     # JWT

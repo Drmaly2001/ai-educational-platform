@@ -83,6 +83,7 @@ class SyllabusResponse(SyllabusInDB):
 class SyllabusGenerateRequest(BaseModel):
     """Schema for AI syllabus generation request"""
     school_id: int
+    class_id: Optional[int] = None
     subject: str = Field(..., min_length=1, max_length=100)
     grade_level: str = Field(..., min_length=1, max_length=50)
     curriculum_standard: str = Field(..., min_length=1, max_length=50)
