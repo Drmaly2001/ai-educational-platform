@@ -48,10 +48,10 @@ def ai_generate_syllabus(
             additional_instructions=request.additional_instructions,
         )
     except Exception as e:
-        logger.error(f"AI syllabus generation failed: {e}")
+        logger.error(f"AI syllabus generation failed: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate syllabus. Please try again."
+            detail=f"AI generation error: {type(e).__name__}: {str(e)}"
         )
 
     new_syllabus = Syllabus(

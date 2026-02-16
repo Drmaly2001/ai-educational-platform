@@ -1,17 +1,57 @@
 """
-AI Service for generating educational content using Anthropic Claude
+AI Service for generating educational content using Anthropic Claude API
+Uses httpx directly to avoid SDK/Pydantic version conflicts.
 """
 import json
 import logging
 from typing import Dict, Any, List, Optional
 
-from anthropic import Anthropic
+import httpx
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+
+
+def _call_claude(prompt: str) -> str:
+    """Call Claude API and return the text response."""
+    response = httpx.post(
+        ANTHROPIC_API_URL,
+        headers={
+            "x-api-key": settings.ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        json={
+            "model": settings.CLAUDE_MODEL,
+            "max_tokens": settings.CLAUDE_MAX_TOKENS,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=120.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data["content"][0]["text"].strip()
+
+
+def _extract_json(text: str) -> Dict[str, Any]:
+    """Extract JSON from response, handling markdown code blocks."""
+    if text.startswith("```"):
+        lines = text.split("\n")
+        json_lines = []
+        in_json = False
+        for line in lines:
+            if line.startswith("```") and not in_json:
+                in_json = True
+                continue
+            elif line.startswith("```") and in_json:
+                break
+            elif in_json:
+                json_lines.append(line)
+        text = "\n".join(json_lines)
+    return json.loads(text)
 
 
 def generate_syllabus(
@@ -24,7 +64,6 @@ def generate_syllabus(
 ) -> Dict[str, Any]:
     """
     Generate a complete syllabus using Claude AI.
-    Returns structured data with name, learning_objectives, weekly_breakdown, and assessment_plan.
     """
     objectives_text = ""
     if learning_objectives:
@@ -88,31 +127,8 @@ Ensure the weekly_breakdown has exactly {duration_weeks} entries (one per week).
 Make content age-appropriate for {grade_level} students.
 Align with {curriculum_standard} standards."""
 
-    message = client.messages.create(
-        model=settings.CLAUDE_MODEL,
-        max_tokens=settings.CLAUDE_MAX_TOKENS,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    response_text = message.content[0].text.strip()
-
-    # Extract JSON from response (handle potential markdown code blocks)
-    if response_text.startswith("```"):
-        lines = response_text.split("\n")
-        json_lines = []
-        in_json = False
-        for line in lines:
-            if line.startswith("```") and not in_json:
-                in_json = True
-                continue
-            elif line.startswith("```") and in_json:
-                break
-            elif in_json:
-                json_lines.append(line)
-        response_text = "\n".join(json_lines)
-
-    result = json.loads(response_text)
-    return result
+    response_text = _call_claude(prompt)
+    return _extract_json(response_text)
 
 
 def generate_lesson(
@@ -181,27 +197,5 @@ Make the content engaging and age-appropriate for {grade_level} students.
 Include at least 2 examples and 2 activities.
 The explanation should be thorough but accessible."""
 
-    message = client.messages.create(
-        model=settings.CLAUDE_MODEL,
-        max_tokens=settings.CLAUDE_MAX_TOKENS,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    response_text = message.content[0].text.strip()
-
-    if response_text.startswith("```"):
-        lines = response_text.split("\n")
-        json_lines = []
-        in_json = False
-        for line in lines:
-            if line.startswith("```") and not in_json:
-                in_json = True
-                continue
-            elif line.startswith("```") and in_json:
-                break
-            elif in_json:
-                json_lines.append(line)
-        response_text = "\n".join(json_lines)
-
-    result = json.loads(response_text)
-    return result
+    response_text = _call_claude(prompt)
+    return _extract_json(response_text)
