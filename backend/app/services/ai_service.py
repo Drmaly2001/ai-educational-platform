@@ -9,6 +9,7 @@ Supports multiple providers with automatic fallback:
 """
 import json
 import logging
+import re
 from typing import Dict, Any, List, Optional, Tuple
 
 import httpx
@@ -201,21 +202,40 @@ def _call_ai(prompt: str) -> str:
 
 
 def _extract_json(text: str) -> Dict[str, Any]:
-    """Extract JSON from response, handling markdown code blocks."""
-    if text.startswith("```"):
-        lines = text.split("\n")
-        json_lines = []
-        in_json = False
-        for line in lines:
-            if line.startswith("```") and not in_json:
-                in_json = True
-                continue
-            elif line.startswith("```") and in_json:
-                break
-            elif in_json:
-                json_lines.append(line)
-        text = "\n".join(json_lines)
-    return json.loads(text)
+    """Extract JSON from AI response, handling markdown blocks and common issues."""
+    # Strip markdown code blocks
+    code_block = re.search(r"```(?:json)?\s*\n(.*?)```", text, re.DOTALL)
+    if code_block:
+        text = code_block.group(1)
+
+    # If no code block, try to find the outermost { ... }
+    if "{" in text:
+        start = text.index("{")
+        # Find matching closing brace
+        depth = 0
+        end = start
+        for i in range(start, len(text)):
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        text = text[start:end]
+
+    # Fix common JSON issues from AI responses
+    # Remove trailing commas before } or ]
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+    # Remove control characters that break JSON
+    text = re.sub(r"[\x00-\x1f\x7f]", lambda m: " " if m.group() in ("\n", "\r", "\t") else "", text)
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Last resort: try to fix unescaped quotes in string values
+        text = re.sub(r'(?<=: ")(.*?)(?="[,\s}])', lambda m: m.group().replace('"', '\\"'), text)
+        return json.loads(text)
 
 
 def generate_syllabus(
