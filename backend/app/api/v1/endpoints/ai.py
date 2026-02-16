@@ -12,10 +12,10 @@ from app.models.user import User
 from app.models.syllabus import Syllabus
 from app.models.lesson import Lesson
 from app.models.class_model import Class
-from app.schemas.syllabus import SyllabusResponse, SyllabusGenerateRequest
+from app.schemas.syllabus import SyllabusResponse, SyllabusGenerateRequest, AssessmentPlanGenerateRequest, ExamPrepGenerateRequest
 from app.schemas.lesson import LessonResponse, LessonGenerateRequest
 from app.core.config import settings
-from app.services.ai_service import generate_syllabus, generate_lesson
+from app.services.ai_service import generate_syllabus, generate_lesson, generate_detailed_assessment_plan, generate_exam_preparation
 
 logger = logging.getLogger(__name__)
 
@@ -173,3 +173,98 @@ def ai_generate_lessons(
         db.refresh(lesson)
 
     return created_lessons
+
+
+@router.post("/generate-assessment-plan", response_model=SyllabusResponse)
+def ai_generate_assessment_plan(
+    request: AssessmentPlanGenerateRequest,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a detailed assessment plan with questions, rubrics, and marking criteria
+    """
+    syllabus = db.query(Syllabus).filter(Syllabus.id == request.syllabus_id).first()
+
+    if not syllabus:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Syllabus not found"
+        )
+
+    if current_user.role == "teacher" and syllabus.teacher_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to generate assessment plan for this syllabus"
+        )
+
+    try:
+        ai_result = generate_detailed_assessment_plan(
+            subject=syllabus.subject,
+            grade_level=syllabus.grade_level,
+            curriculum_standard=syllabus.curriculum_standard,
+            duration_weeks=syllabus.duration_weeks,
+            learning_objectives=syllabus.learning_objectives or [],
+            weekly_breakdown=syllabus.weekly_breakdown or [],
+            existing_assessment_plan=syllabus.assessment_plan,
+            additional_instructions=request.additional_instructions,
+        )
+    except Exception as e:
+        logger.error(f"AI assessment plan generation failed: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI generation error: {type(e).__name__}: {str(e)}"
+        )
+
+    syllabus.detailed_assessment_plan = ai_result
+    db.commit()
+    db.refresh(syllabus)
+
+    return syllabus
+
+
+@router.post("/generate-exam-prep", response_model=SyllabusResponse)
+def ai_generate_exam_prep(
+    request: ExamPrepGenerateRequest,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate exam preparation materials: study guide, practice questions, revision plan
+    """
+    syllabus = db.query(Syllabus).filter(Syllabus.id == request.syllabus_id).first()
+
+    if not syllabus:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Syllabus not found"
+        )
+
+    if current_user.role == "teacher" and syllabus.teacher_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to generate exam prep for this syllabus"
+        )
+
+    try:
+        ai_result = generate_exam_preparation(
+            subject=syllabus.subject,
+            grade_level=syllabus.grade_level,
+            curriculum_standard=syllabus.curriculum_standard,
+            duration_weeks=syllabus.duration_weeks,
+            learning_objectives=syllabus.learning_objectives or [],
+            weekly_breakdown=syllabus.weekly_breakdown or [],
+            additional_instructions=request.additional_instructions,
+        )
+    except Exception as e:
+        logger.error(f"AI exam prep generation failed: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI generation error: {type(e).__name__}: {str(e)}"
+        )
+
+    syllabus.exam_preparation = ai_result
+    db.commit()
+    db.refresh(syllabus)
+
+    return syllabus

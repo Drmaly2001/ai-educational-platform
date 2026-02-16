@@ -27,6 +27,8 @@ class Syllabus(Base):
     assessment_plan = Column(JSON, nullable=False)  # JSON structure with assessment schedule
     revision_schedule = Column(JSON)
     resources = Column(JSON, default=[])
+    detailed_assessment_plan = Column(JSON, nullable=True)
+    exam_preparation = Column(JSON, nullable=True)
     
     is_published = Column(Boolean, default=False, index=True)
     published_at = Column(DateTime, nullable=True)

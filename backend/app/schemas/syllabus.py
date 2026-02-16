@@ -52,6 +52,8 @@ class SyllabusUpdate(BaseModel):
     assessment_plan: Optional[List[Dict[str, Any]]] = None
     revision_schedule: Optional[List[Dict[str, Any]]] = None
     resources: Optional[List[Dict[str, Any]]] = None
+    detailed_assessment_plan: Optional[Any] = None
+    exam_preparation: Optional[Any] = None
     is_published: Optional[bool] = None
 
 
@@ -65,6 +67,8 @@ class SyllabusInDB(SyllabusBase):
     assessment_plan: Any
     revision_schedule: Optional[Any]
     resources: Optional[Any]
+    detailed_assessment_plan: Optional[Any] = None
+    exam_preparation: Optional[Any] = None
     is_published: bool
     published_at: Optional[datetime]
     ai_generated: bool
@@ -78,6 +82,18 @@ class SyllabusInDB(SyllabusBase):
 class SyllabusResponse(SyllabusInDB):
     """Schema for syllabus response"""
     pass
+
+
+class AssessmentPlanGenerateRequest(BaseModel):
+    """Schema for AI detailed assessment plan generation"""
+    syllabus_id: int
+    additional_instructions: Optional[str] = None
+
+
+class ExamPrepGenerateRequest(BaseModel):
+    """Schema for AI exam preparation generation"""
+    syllabus_id: int
+    additional_instructions: Optional[str] = None
 
 
 class SyllabusGenerateRequest(BaseModel):

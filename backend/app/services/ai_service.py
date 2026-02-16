@@ -379,3 +379,221 @@ The explanation should be thorough but accessible."""
 
     response_text = _call_ai(prompt)
     return _extract_json(response_text)
+
+
+def generate_detailed_assessment_plan(
+    subject: str,
+    grade_level: str,
+    curriculum_standard: str,
+    duration_weeks: int,
+    learning_objectives: List[str],
+    weekly_breakdown: List[Dict[str, Any]],
+    existing_assessment_plan: Optional[List[Dict[str, Any]]] = None,
+    additional_instructions: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Generate a detailed assessment plan with questions, rubrics, and marking criteria."""
+    objectives_text = "\n".join(f"- {obj}" for obj in learning_objectives)
+
+    topics_text = "\n".join(
+        f"  Week {w.get('week', i+1)}: {w.get('topic', 'N/A')}"
+        for i, w in enumerate(weekly_breakdown[:30])
+    )
+
+    existing_text = ""
+    if existing_assessment_plan:
+        existing_text = "\nExisting assessment schedule to expand upon:\n" + json.dumps(
+            existing_assessment_plan[:10], indent=2
+        )
+
+    extra = ""
+    if additional_instructions:
+        extra = f"\nAdditional instructions: {additional_instructions}"
+
+    prompt = f"""You are an expert educational assessment designer. Create a comprehensive, detailed assessment plan for a course.
+
+Subject: {subject}
+Grade Level: {grade_level}
+Curriculum Standard: {curriculum_standard}
+Duration: {duration_weeks} weeks
+
+Learning Objectives:
+{objectives_text}
+
+Topics Covered:
+{topics_text}
+{existing_text}
+{extra}
+
+Respond with ONLY valid JSON in this exact structure:
+{{
+    "assessments": [
+        {{
+            "week": 4,
+            "type": "quiz",
+            "title": "Assessment title",
+            "description": "What is being assessed",
+            "weight_percentage": 10,
+            "duration_minutes": 60,
+            "topics_covered": ["topic 1", "topic 2"],
+            "questions": [
+                {{
+                    "question_number": 1,
+                    "question_text": "Full question text",
+                    "question_type": "multiple_choice",
+                    "marks": 5,
+                    "options": ["A) option", "B) option", "C) option", "D) option"],
+                    "expected_answer": "Correct answer with explanation",
+                    "marking_criteria": "How to award marks"
+                }},
+                {{
+                    "question_number": 2,
+                    "question_text": "Full question text",
+                    "question_type": "short_answer",
+                    "marks": 10,
+                    "expected_answer": "Model answer or key points",
+                    "marking_criteria": "How to award marks"
+                }}
+            ],
+            "rubric": {{
+                "criteria": [
+                    {{
+                        "criterion": "Understanding of concepts",
+                        "excellent": "Full marks description",
+                        "good": "Good marks description",
+                        "satisfactory": "Passing description",
+                        "needs_improvement": "Below passing description"
+                    }}
+                ],
+                "total_marks": 100
+            }},
+            "instructions_for_students": "Clear instructions for students",
+            "allowed_materials": ["calculator", "formula sheet"]
+        }}
+    ],
+    "grading_policy": {{
+        "grade_boundaries": {{"A": 90, "B": 80, "C": 70, "D": 60, "F": 0}},
+        "total_weight": 100
+    }}
+}}
+
+Requirements:
+- Create 4-6 assessments spread across the {duration_weeks} weeks
+- Include a mix of types: quiz, test, project, presentation, midterm, final exam
+- Each assessment should have 3-6 questions with a mix of types (multiple_choice, short_answer, essay, problem_solving)
+- Include options array ONLY for multiple_choice questions
+- Weight percentages must sum to 100
+- Make content appropriate for {grade_level} students
+- Align with {curriculum_standard} standards
+- Include clear rubrics with grading criteria"""
+
+    response_text = _call_ai(prompt)
+    return _extract_json(response_text)
+
+
+def generate_exam_preparation(
+    subject: str,
+    grade_level: str,
+    curriculum_standard: str,
+    duration_weeks: int,
+    learning_objectives: List[str],
+    weekly_breakdown: List[Dict[str, Any]],
+    additional_instructions: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Generate exam preparation materials: study guide, practice questions, revision plan."""
+    objectives_text = "\n".join(f"- {obj}" for obj in learning_objectives)
+
+    topics_text = "\n".join(
+        f"  Week {w.get('week', i+1)}: {w.get('topic', 'N/A')} - {', '.join(w.get('subtopics', []))}"
+        for i, w in enumerate(weekly_breakdown[:30])
+    )
+
+    extra = ""
+    if additional_instructions:
+        extra = f"\nAdditional instructions: {additional_instructions}"
+
+    prompt = f"""You are an expert teacher helping students prepare for their final exam.
+
+Subject: {subject}
+Grade Level: {grade_level}
+Curriculum Standard: {curriculum_standard}
+Duration: {duration_weeks} weeks
+
+Learning Objectives:
+{objectives_text}
+
+Topics Covered:
+{topics_text}
+{extra}
+
+Respond with ONLY valid JSON in this exact structure:
+{{
+    "study_guide": {{
+        "overview": "General exam preparation overview and strategy (2-3 sentences)",
+        "key_topics": [
+            {{
+                "topic": "Topic name",
+                "importance": "high",
+                "summary": "Concise summary of what students need to know",
+                "key_concepts": ["concept 1", "concept 2"],
+                "common_mistakes": ["mistake 1", "mistake 2"]
+            }}
+        ],
+        "key_formulas_and_definitions": [
+            {{
+                "term": "Term or formula name",
+                "definition": "The definition or formula",
+                "when_to_use": "Context for when to apply this"
+            }}
+        ]
+    }},
+    "practice_questions": [
+        {{
+            "question_number": 1,
+            "topic": "Related topic",
+            "difficulty": "easy",
+            "question": "Full question text",
+            "question_type": "multiple_choice",
+            "options": ["A) option", "B) option", "C) option", "D) option"],
+            "answer": "Correct answer with detailed explanation",
+            "marks": 5
+        }},
+        {{
+            "question_number": 2,
+            "topic": "Related topic",
+            "difficulty": "medium",
+            "question": "Full question text",
+            "question_type": "short_answer",
+            "answer": "Model answer with explanation",
+            "marks": 10
+        }}
+    ],
+    "revision_plan": {{
+        "total_days": 14,
+        "daily_schedule": [
+            {{
+                "day": 1,
+                "focus_topics": ["topic 1", "topic 2"],
+                "activities": ["Review notes on topic 1", "Practice 5 questions on topic 2"],
+                "duration_hours": 2
+            }}
+        ]
+    }},
+    "exam_tips": [
+        "Time management: allocate time per section based on marks",
+        "Read all questions before starting",
+        "Show your working for calculation questions"
+    ]
+}}
+
+Requirements:
+- Include 8-12 key topics in the study guide, ordered by importance (high/medium/low)
+- Include 10-15 practice questions with a mix of difficulties (easy/medium/hard) and types
+- Include options array ONLY for multiple_choice questions
+- Create a 10-14 day revision plan with realistic daily schedules
+- Include 5-8 practical exam tips specific to {subject}
+- Include at least 5 key formulas/definitions relevant to the course
+- Make all content appropriate for {grade_level} students
+- Align with {curriculum_standard} exam expectations"""
+
+    response_text = _call_ai(prompt)
+    return _extract_json(response_text)
