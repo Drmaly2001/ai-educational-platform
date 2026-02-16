@@ -4,7 +4,7 @@ Main FastAPI application
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import create_engine, text, pool as sa_pool
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.models import User, School, Class, Syllabus, Lesson, Subject, ClassSubject  # Import all models
@@ -44,14 +44,23 @@ def _run_migrations():
         "ALTER TABLE syllabi ADD COLUMN IF NOT EXISTS detailed_assessment_plan JSONB",
         "ALTER TABLE syllabi ADD COLUMN IF NOT EXISTS exam_preparation JSONB",
     ]
+    # Use NullPool (no connection pooling) so the migration connection is
+    # completely independent and won't be blocked by the main pool.
+    migration_engine = create_engine(
+        settings.DATABASE_URL,
+        poolclass=sa_pool.NullPool,
+        connect_args={"connect_timeout": 15, "options": "-c lock_timeout=10000"},
+    )
     try:
-        with engine.connect() as conn:
+        with migration_engine.connect() as conn:
             for sql in migrations:
                 conn.execute(text(sql))
             conn.commit()
-        logger.info("Database migrations completed")
+        logger.info("Database migrations completed successfully")
     except Exception as e:
-        logger.warning(f"Migration warning (may be non-critical): {e}")
+        logger.warning(f"Migration warning (non-critical if columns already exist): {e}")
+    finally:
+        migration_engine.dispose()
 
 
 @app.on_event("startup")

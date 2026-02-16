@@ -94,7 +94,14 @@ def ai_generate_lessons(
     """
     Generate lessons for a syllabus using AI
     """
-    syllabus = db.query(Syllabus).filter(Syllabus.id == request.syllabus_id).first()
+    try:
+        syllabus = db.query(Syllabus).filter(Syllabus.id == request.syllabus_id).first()
+    except Exception as e:
+        logger.error(f"DB error fetching syllabus: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {type(e).__name__}: {str(e)}"
+        )
 
     if not syllabus:
         raise HTTPException(
@@ -121,7 +128,10 @@ def ai_generate_lessons(
             detail="No weeks found to generate lessons for"
         )
 
+    from slugify import slugify as make_slug
+
     created_lessons = []
+    ai_errors = []
 
     for week_data in weeks_to_generate:
         week_num = week_data.get("week", 1)
@@ -138,16 +148,15 @@ def ai_generate_lessons(
                 additional_instructions=request.additional_instructions,
             )
         except Exception as e:
-            logger.error(f"AI lesson generation failed for week {week_num}: {e}")
+            logger.error(f"AI lesson generation failed for week {week_num}: {type(e).__name__}: {e}")
+            ai_errors.append(f"Week {week_num}: {type(e).__name__}: {str(e)}")
             continue
-
-        from slugify import slugify as make_slug
 
         new_lesson = Lesson(
             syllabus_id=syllabus.id,
             week_number=week_num,
             topic=ai_result.get("topic", topic),
-            slug=make_slug(topic),
+            slug=make_slug(f"{topic}-{week_num}"),
             difficulty_level="intermediate",
             duration_minutes=60,
             learning_goals=learning_goals or ai_result.get("learning_goals", []),
@@ -167,7 +176,20 @@ def ai_generate_lessons(
         db.add(new_lesson)
         created_lessons.append(new_lesson)
 
-    db.commit()
+    if not created_lessons and ai_errors:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI generation error — all weeks failed:\n" + "\n".join(ai_errors[:3])
+        )
+
+    try:
+        db.commit()
+    except Exception as e:
+        logger.error(f"DB commit error: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error saving lessons: {type(e).__name__}: {str(e)}"
+        )
 
     for lesson in created_lessons:
         db.refresh(lesson)
