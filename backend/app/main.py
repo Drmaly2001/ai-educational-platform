@@ -4,6 +4,7 @@ Main FastAPI application
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.models import User, School, Class, Syllabus, Lesson, Subject, ClassSubject  # Import all models
@@ -37,16 +38,35 @@ app.add_middleware(
 )
 
 
+def _run_migrations():
+    """Add missing columns that were added after initial table creation."""
+    migrations = [
+        "ALTER TABLE syllabi ADD COLUMN IF NOT EXISTS detailed_assessment_plan JSONB",
+        "ALTER TABLE syllabi ADD COLUMN IF NOT EXISTS exam_preparation JSONB",
+    ]
+    try:
+        with engine.connect() as conn:
+            for sql in migrations:
+                conn.execute(text(sql))
+            conn.commit()
+        logger.info("Database migrations completed")
+    except Exception as e:
+        logger.warning(f"Migration warning (may be non-critical): {e}")
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize application on startup"""
     logger.info(f"Starting {settings.APP_NAME}")
     logger.info(f"Environment: {settings.APP_ENV}")
     logger.info(f"Debug mode: {settings.DEBUG}")
-    
+
     # Create database tables
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")
+
+    # Run any missing column migrations
+    _run_migrations()
 
 
 @app.on_event("shutdown")
