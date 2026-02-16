@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Brain, Loader2, Sparkles, X, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Brain, Loader2, Sparkles, X, ShieldAlert, Lightbulb, Plus } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { canAccess } from '@/lib/roles'
 import api from '@/lib/api'
@@ -29,6 +29,168 @@ interface ClassItem {
   class_subjects: ClassSubjectItem[]
 }
 
+// ---- Suggested objectives & instructions per subject ----
+
+const subjectObjectives: Record<string, string[]> = {
+  Mathematics: [
+    'Develop problem-solving and critical thinking skills',
+    'Master fundamental arithmetic and algebraic operations',
+    'Understand geometric concepts and spatial reasoning',
+    'Apply mathematical concepts to real-world situations',
+    'Develop data analysis and statistical reasoning',
+    'Build proficiency in mathematical proofs and logical reasoning',
+    'Strengthen mental math and estimation skills',
+  ],
+  Physics: [
+    'Understand fundamental laws of motion and forces',
+    'Apply scientific method to conduct experiments',
+    'Analyze energy transformations and conservation laws',
+    'Understand wave phenomena and electromagnetic spectrum',
+    'Develop skills in scientific measurement and data analysis',
+    'Connect physics concepts to everyday technology',
+  ],
+  Chemistry: [
+    'Understand atomic structure and the periodic table',
+    'Master chemical bonding and molecular interactions',
+    'Balance chemical equations and understand stoichiometry',
+    'Conduct safe laboratory experiments and record observations',
+    'Understand acids, bases, and chemical reactions',
+    'Explore organic chemistry fundamentals',
+  ],
+  Biology: [
+    'Understand cell structure and function',
+    'Explain processes of genetics and heredity',
+    'Understand ecosystems and environmental interactions',
+    'Describe human body systems and their functions',
+    'Apply scientific inquiry to biological investigations',
+    'Understand evolution and biodiversity',
+  ],
+  English: [
+    'Develop reading comprehension and analytical skills',
+    'Improve academic and creative writing abilities',
+    'Expand vocabulary and language usage',
+    'Analyze literary texts and identify literary devices',
+    'Develop effective oral communication and presentation skills',
+    'Master grammar, punctuation, and sentence structure',
+  ],
+  Arabic: [
+    'تطوير مهارات القراءة والفهم',
+    'تحسين مهارات الكتابة الإبداعية والأكاديمية',
+    'توسيع المفردات واستخدام اللغة',
+    'تحليل النصوص الأدبية والشعرية',
+    'تطوير مهارات التواصل الشفهي',
+    'إتقان قواعد النحو والصرف',
+  ],
+  Science: [
+    'Apply the scientific method to investigations',
+    'Understand basic concepts in physics, chemistry, and biology',
+    'Develop observation and data collection skills',
+    'Analyze experimental results and draw conclusions',
+    'Connect scientific concepts to everyday life',
+    'Understand environmental science and sustainability',
+  ],
+  History: [
+    'Analyze historical events and their causes and effects',
+    'Develop skills in evaluating primary and secondary sources',
+    'Understand the development of civilizations and cultures',
+    'Connect historical events to contemporary issues',
+    'Develop critical thinking about historical narratives',
+    'Understand political, economic, and social change over time',
+  ],
+  Geography: [
+    'Understand physical and human geography concepts',
+    'Develop map reading and spatial analysis skills',
+    'Analyze environmental issues and sustainability',
+    'Understand population dynamics and urbanization',
+    'Study climate patterns and natural disasters',
+    'Explore economic geography and global trade',
+  ],
+  'Computer Science': [
+    'Develop computational thinking and problem-solving skills',
+    'Learn fundamental programming concepts and algorithms',
+    'Understand data structures and their applications',
+    'Apply software development best practices',
+    'Understand computer networks and cybersecurity basics',
+    'Develop skills in web development or app creation',
+  ],
+  Art: [
+    'Develop artistic techniques across different mediums',
+    'Understand elements and principles of design',
+    'Analyze and appreciate art from various cultures and periods',
+    'Express ideas creatively through visual arts',
+    'Develop critical evaluation skills for artwork',
+    'Explore digital art and modern creative tools',
+  ],
+  Music: [
+    'Develop music reading and notation skills',
+    'Understand rhythm, melody, and harmony',
+    'Perform individually and in ensemble settings',
+    'Analyze music from different genres and cultures',
+    'Develop ear training and aural skills',
+    'Compose and arrange simple musical pieces',
+  ],
+  'Physical Education': [
+    'Develop physical fitness and motor skills',
+    'Understand rules and strategies of various sports',
+    'Promote teamwork and sportsmanship',
+    'Develop healthy lifestyle habits',
+    'Understand body mechanics and injury prevention',
+    'Build confidence through physical activity',
+  ],
+  Economics: [
+    'Understand basic economic principles and concepts',
+    'Analyze supply, demand, and market dynamics',
+    'Understand fiscal and monetary policy',
+    'Evaluate economic decision-making processes',
+    'Understand international trade and globalization',
+    'Apply economic reasoning to real-world situations',
+  ],
+}
+
+const subjectInstructions: Record<string, string> = {
+  Mathematics: 'Include problem-solving exercises for each topic. Use real-world applications and visual representations. Incorporate both individual practice and collaborative problem-solving activities.',
+  Physics: 'Include hands-on experiments and demonstrations. Connect theoretical concepts to real-world applications and technology. Include mathematical problem-solving alongside conceptual understanding.',
+  Chemistry: 'Include safe laboratory experiments for each major topic. Balance theoretical knowledge with practical applications. Use molecular models and visual aids.',
+  Biology: 'Include laboratory investigations and field studies where possible. Use diagrams and models to explain complex processes. Connect topics to health, medicine, and environmental awareness.',
+  English: 'Include a variety of reading materials (fiction, non-fiction, poetry). Balance grammar instruction with creative and analytical writing. Incorporate speaking and listening activities.',
+  Arabic: 'تضمين نصوص متنوعة من الأدب العربي القديم والحديث. الموازنة بين القواعد النحوية والتعبير الإبداعي. تضمين أنشطة الاستماع والتحدث والكتابة.',
+  Science: 'Include hands-on experiments and scientific investigations. Use the inquiry-based learning approach. Connect science to everyday life and current events.',
+  History: 'Use primary sources and historical documents. Include discussions and debates on historical interpretations. Connect historical events to current world affairs.',
+  Geography: 'Include map work and GIS activities. Use case studies from different regions. Incorporate fieldwork and data collection where possible.',
+  'Computer Science': 'Include hands-on coding projects and exercises. Use pair programming and collaborative development. Build progressively complex projects throughout the course.',
+  Art: 'Include hands-on studio projects for each unit. Expose students to diverse artistic traditions and contemporary art. Balance technique development with creative expression.',
+  Music: 'Include regular performance opportunities. Balance music theory with practical music-making. Expose students to diverse musical genres and traditions.',
+  'Physical Education': 'Include a variety of individual and team sports. Focus on skill development and fitness improvement. Ensure inclusive activities for all ability levels.',
+  Economics: 'Use real-world case studies and current events. Include simulations and role-playing activities. Connect economic theory to personal financial literacy.',
+}
+
+// Fuzzy match subject name to suggestions
+function getSubjectKey(subjectName: string): string | null {
+  const lower = subjectName.toLowerCase()
+  for (const key of Object.keys(subjectObjectives)) {
+    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower)) {
+      return key
+    }
+  }
+  // Common aliases
+  if (lower.includes('math')) return 'Mathematics'
+  if (lower.includes('رياضيات')) return 'Mathematics'
+  if (lower.includes('فيزياء')) return 'Physics'
+  if (lower.includes('كيمياء')) return 'Chemistry'
+  if (lower.includes('أحياء') || lower.includes('احياء')) return 'Biology'
+  if (lower.includes('عربي') || lower.includes('لغة عربية')) return 'Arabic'
+  if (lower.includes('إنجليزي') || lower.includes('انجليزي') || lower.includes('لغة إنجليزية')) return 'English'
+  if (lower.includes('تاريخ')) return 'History'
+  if (lower.includes('جغرافيا')) return 'Geography'
+  if (lower.includes('حاسوب') || lower.includes('حاسب') || lower.includes('برمجة')) return 'Computer Science'
+  if (lower.includes('تربية بدنية') || lower.includes('رياضة')) return 'Physical Education'
+  if (lower.includes('موسيقى')) return 'Music'
+  if (lower.includes('فنون') || lower.includes('رسم') || lower.includes('تشكيل')) return 'Art'
+  if (lower.includes('اقتصاد')) return 'Economics'
+  if (lower.includes('علوم')) return 'Science'
+  return null
+}
+
 const generateSchema = z.object({
   class_id: z.string().min(1, 'Class is required'),
   subject: z.string().min(1, 'Subject is required'),
@@ -48,6 +210,8 @@ export default function GenerateSyllabusPage() {
   const [classes, setClasses] = useState<ClassItem[]>([])
   const [loadingClasses, setLoadingClasses] = useState(true)
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null)
+  const [suggestedObjectives, setSuggestedObjectives] = useState<string[]>([])
+  const [suggestedInstruction, setSuggestedInstruction] = useState<string>('')
 
   if (!canAccess(user?.role || '', 'syllabi:generate')) {
     return (
@@ -90,17 +254,39 @@ export default function GenerateSyllabusPage() {
   })
 
   const watchClassId = watch('class_id')
+  const watchSubject = watch('subject')
 
   useEffect(() => {
     if (watchClassId) {
       const cls = classes.find((c) => String(c.id) === watchClassId)
       setSelectedClass(cls || null)
       setValue('subject', '')
+      setSuggestedObjectives([])
+      setSuggestedInstruction('')
     } else {
       setSelectedClass(null)
       setValue('subject', '')
+      setSuggestedObjectives([])
+      setSuggestedInstruction('')
     }
   }, [watchClassId, classes, setValue])
+
+  // Update suggestions when subject changes
+  useEffect(() => {
+    if (watchSubject) {
+      const key = getSubjectKey(watchSubject)
+      if (key) {
+        setSuggestedObjectives(subjectObjectives[key] || [])
+        setSuggestedInstruction(subjectInstructions[key] || '')
+      } else {
+        setSuggestedObjectives([])
+        setSuggestedInstruction('')
+      }
+    } else {
+      setSuggestedObjectives([])
+      setSuggestedInstruction('')
+    }
+  }, [watchSubject])
 
   function addObjective() {
     const trimmed = objectiveInput.trim()
@@ -110,8 +296,28 @@ export default function GenerateSyllabusPage() {
     }
   }
 
+  function addSuggestedObjective(obj: string) {
+    if (!objectives.includes(obj)) {
+      setObjectives([...objectives, obj])
+    }
+  }
+
+  function addAllSuggestions() {
+    const newObjectives = [...objectives]
+    for (const obj of suggestedObjectives) {
+      if (!newObjectives.includes(obj)) {
+        newObjectives.push(obj)
+      }
+    }
+    setObjectives(newObjectives)
+  }
+
   function removeObjective(index: number) {
     setObjectives(objectives.filter((_, i) => i !== index))
+  }
+
+  function applySuggestedInstruction() {
+    setValue('additional_instructions', suggestedInstruction)
   }
 
   async function onSubmit(data: GenerateFormData) {
@@ -139,6 +345,7 @@ export default function GenerateSyllabusPage() {
   }
 
   const availableSubjects = selectedClass?.class_subjects?.filter((cs) => cs.subject) || []
+  const remainingSuggestions = suggestedObjectives.filter((s) => !objectives.includes(s))
 
   return (
     <div>
@@ -294,7 +501,7 @@ export default function GenerateSyllabusPage() {
           {/* Learning Objectives */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Learning Objectives (optional)
+              Learning Objectives
             </label>
             <div className="flex gap-2">
               <input
@@ -318,6 +525,8 @@ export default function GenerateSyllabusPage() {
                 Add
               </button>
             </div>
+
+            {/* Added objectives */}
             {objectives.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {objectives.map((obj, index) => (
@@ -337,12 +546,44 @@ export default function GenerateSyllabusPage() {
                 ))}
               </div>
             )}
+
+            {/* Suggested objectives */}
+            {remainingSuggestions.length > 0 && (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                    <Lightbulb className="h-3.5 w-3.5" />
+                    Suggested objectives for {watchSubject}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addAllSuggestions}
+                    className="text-xs font-medium text-amber-700 underline hover:text-amber-900"
+                  >
+                    Add all
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {remainingSuggestions.map((obj, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => addSuggestedObjective(obj)}
+                      className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-white px-2.5 py-1 text-xs text-amber-800 transition-colors hover:bg-amber-100"
+                    >
+                      <Plus className="h-3 w-3" />
+                      {obj}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Additional Instructions */}
           <div>
             <label htmlFor="additional_instructions" className="mb-1.5 block text-sm font-medium text-gray-700">
-              Additional Instructions (optional)
+              Additional Instructions
             </label>
             <textarea
               id="additional_instructions"
@@ -351,6 +592,24 @@ export default function GenerateSyllabusPage() {
               className="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
               {...register('additional_instructions')}
             />
+
+            {/* Suggested instruction */}
+            {suggestedInstruction && (
+              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  Suggested instructions for {watchSubject}
+                </div>
+                <p className="text-xs text-amber-800">{suggestedInstruction}</p>
+                <button
+                  type="button"
+                  onClick={applySuggestedInstruction}
+                  className="mt-2 text-xs font-medium text-amber-700 underline hover:text-amber-900"
+                >
+                  Use this suggestion
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
