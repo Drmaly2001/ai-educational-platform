@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { canAccess } from '@/lib/roles'
 import api from '@/lib/api'
-import { Plus, BookOpen, Loader2, Settings } from 'lucide-react'
+import { Plus, BookOpen, Loader2, Settings, Pencil } from 'lucide-react'
 
 interface ClassSubjectItem {
   id: number
@@ -112,13 +112,22 @@ export default function ClassesPage() {
                     {cls.is_active ? 'Active' : 'Inactive'}
                   </span>
                   {canCreate && (
-                    <Link
-                      href={`/dashboard/classes/${cls.id}/subjects`}
-                      className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                      title="Manage subjects"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Link>
+                    <>
+                      <Link
+                        href={`/dashboard/classes/${cls.id}/edit`}
+                        className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                        title="Edit class"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                      <Link
+                        href={`/dashboard/classes/${cls.id}/subjects`}
+                        className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                        title="Manage subjects"
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Link>
+                    </>
                   )}
                 </div>
               </div>
