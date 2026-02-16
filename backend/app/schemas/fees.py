@@ -107,8 +107,11 @@ class FeesMasterCreate(FeesMasterBase):
 
 
 class FeesMasterUpdate(BaseModel):
+    fees_group_id: Optional[int] = None
+    fees_type_id: Optional[int] = None
     amount: Optional[float] = Field(None, gt=0)
     due_date: Optional[datetime] = None
+    academic_year: Optional[str] = Field(None, min_length=4, max_length=20)
     term: Optional[str] = None
     is_active: Optional[bool] = None
 
