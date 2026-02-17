@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { canAccess } from '@/lib/roles'
 import api from '@/lib/api'
-import { Plus, BookOpen, Loader2, Settings, Pencil, Users } from 'lucide-react'
+import { Plus, BookOpen, Loader2, Settings, Pencil, Users, UserCheck } from 'lucide-react'
 
 interface ClassSubjectItem {
   id: number
@@ -71,10 +71,16 @@ export default function ClassesPage() {
           </p>
         </div>
         {canCreate && (
-          <Link href="/dashboard/classes/create" className="btn-primary gap-2">
-            <Plus className="h-4 w-4" />
-            Create Class
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/classes/assign-teacher" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+              <UserCheck className="h-4 w-4" />
+              Assign Teacher
+            </Link>
+            <Link href="/dashboard/classes/create" className="btn-primary gap-2">
+              <Plus className="h-4 w-4" />
+              Create Class
+            </Link>
+          </div>
         )}
       </div>
 
