@@ -65,7 +65,7 @@ class StudentCreateRequest(BaseModel):
     email: str = Field(..., min_length=3)
     full_name: str = Field(..., min_length=2, max_length=100)
     password: str = Field(..., min_length=6)
-    school_id: int
+    school_id: Optional[int] = None
     # Profile fields (optional)
     student_number: Optional[str] = None
     grade_level: Optional[str] = None
@@ -160,7 +160,7 @@ class StudentDetailResponse(BaseModel):
     is_active: bool
     school_id: Optional[int]
     created_at: datetime
-    profile: Optional[StudentProfileResponse] = None
+    student_profile: Optional[StudentProfileResponse] = None
     enrollments: List[StudentEnrollmentResponse] = []
     recent_activities: List[StudentActivityResponse] = []
 

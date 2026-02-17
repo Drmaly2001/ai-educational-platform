@@ -44,7 +44,7 @@ def list_students(
     query = db.query(User).filter(User.role == "student")
 
     # Scope to user's school unless super_admin
-    if current_user.role \!= "super_admin":
+    if current_user.role != "super_admin":
         query = query.filter(User.school_id == current_user.school_id)
     elif school_id:
         query = query.filter(User.school_id == school_id)
@@ -68,9 +68,15 @@ def list_students(
             "is_active": s.is_active,
             "school_id": s.school_id,
             "created_at": s.created_at,
-            "student_number": profile.student_number if profile else None,
-            "grade_level": profile.grade_level if profile else None,
             "enrollment_count": enrollment_count,
+            "student_profile": {
+                "student_number": profile.student_number if profile else None,
+                "grade_level": profile.grade_level if profile else None,
+                "date_of_birth": str(profile.date_of_birth) if profile and profile.date_of_birth else None,
+                "gender": profile.gender if profile else None,
+                "phone": profile.phone if profile else None,
+                "parent_name": profile.parent_name if profile else None,
+            } if profile else None,
         })
     return result
 
@@ -88,12 +94,13 @@ def create_student(
         raise HTTPException(status_code=400, detail="Email already registered")
 
     # Create user
+    school_id = data.school_id if data.school_id is not None else current_user.school_id
     new_user = User(
         email=data.email,
         full_name=data.full_name,
         hashed_password=get_password_hash(data.password),
         role="student",
-        school_id=data.school_id,
+        school_id=school_id,
         is_active=True,
         is_verified=False,
     )
@@ -132,7 +139,7 @@ def create_student(
     }
 
 
-@router.get("/{student_id}", response_model=StudentDetailResponse)
+@router.get("/{student_id}", response_model=dict)
 def get_student(
     student_id: int,
     current_user: User = Depends(_require_admin_or_teacher),
@@ -194,14 +201,14 @@ def get_student(
         "is_active": student.is_active,
         "school_id": student.school_id,
         "created_at": student.created_at,
-        "profile": {
+        "student_profile": {
             "id": profile.id,
             "student_id": profile.student_id,
             "student_number": profile.student_number,
             "grade_level": profile.grade_level,
-            "enrollment_date": profile.enrollment_date,
+            "enrollment_date": str(profile.enrollment_date) if profile.enrollment_date else None,
             "academic_year": profile.academic_year,
-            "date_of_birth": profile.date_of_birth,
+            "date_of_birth": str(profile.date_of_birth) if profile.date_of_birth else None,
             "gender": profile.gender,
             "phone": profile.phone,
             "address": profile.address,
