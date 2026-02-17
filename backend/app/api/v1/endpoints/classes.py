@@ -308,6 +308,7 @@ def remove_subject_from_class(
 
 from app.models.student_enrollment import StudentEnrollment
 from app.models.student_activity import StudentActivity
+from app.models.student_profile import StudentProfile
 from app.models.lesson import Lesson as LessonModel
 from app.schemas.student import StudentEnrollmentCreate, StudentEnrollmentResponse
 
@@ -378,6 +379,7 @@ def enroll_student(
         if existing.status == "active":
             raise HTTPException(status_code=400, detail="Student already enrolled in this class")
         existing.status = "active"
+        _sync_student_profile(db, data.student_id, cls)
         db.commit()
         return {"message": "Student re-enrolled successfully"}
 
@@ -387,8 +389,26 @@ def enroll_student(
         enrolled_by=current_user.id,
     )
     db.add(enrollment)
+    _sync_student_profile(db, data.student_id, cls)
     db.commit()
     return {"message": "Student enrolled successfully"}
+
+
+def _sync_student_profile(db, student_id: int, cls: Class):
+    """Update student profile with class grade_level and academic_year."""
+    profile = db.query(StudentProfile).filter(StudentProfile.student_id == student_id).first()
+    if profile:
+        if cls.grade_level:
+            profile.grade_level = cls.grade_level
+        if cls.academic_year:
+            profile.academic_year = cls.academic_year
+    else:
+        profile = StudentProfile(
+            student_id=student_id,
+            grade_level=cls.grade_level,
+            academic_year=cls.academic_year,
+        )
+        db.add(profile)
 
 
 @router.delete("/{class_id}/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
