@@ -30,7 +30,7 @@ export default function StudentsPage() {
   const [gradeFilter, setGradeFilter] = useState('')
 
   useEffect(() => {
-    if (\!canAccess(user?.role || '', 'students:view')) return
+    if (!canAccess(user?.role || '', 'students:view')) return
     fetchStudents()
   }, [user, gradeFilter])
 
@@ -48,7 +48,7 @@ export default function StudentsPage() {
     }
   }
 
-  if (\!canAccess(user?.role || '', 'students:view')) {
+  if (!canAccess(user?.role || '', 'students:view')) {
     return (
       <div className="rounded-xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-gray-100">
         <ShieldAlert className="mx-auto h-12 w-12 text-red-300" />
@@ -75,7 +75,7 @@ export default function StudentsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Students</h1>
-            <p className="text-sm text-gray-500">{students.length} student{students.length \!== 1 ? 's' : ''} total</p>
+            <p className="text-sm text-gray-500">{students.length} student{students.length !== 1 ? 's' : ''} total</p>
           </div>
         </div>
         {canAccess(user?.role || '', 'students:create') && (
@@ -125,7 +125,7 @@ export default function StudentsPage() {
           <p className="mt-1 text-sm text-gray-500">
             {search || gradeFilter ? 'Try adjusting your search or filters.' : 'Add your first student to get started.'}
           </p>
-          {canAccess(user?.role || '', 'students:create') && \!search && \!gradeFilter && (
+          {canAccess(user?.role || '', 'students:create') && !search && !gradeFilter && (
             <Link href="/dashboard/students/create" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
               <Plus className="h-4 w-4" /> Add Student
             </Link>
