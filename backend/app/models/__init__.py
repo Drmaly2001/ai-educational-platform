@@ -7,6 +7,9 @@ from app.models.class_model import Class
 from app.models.syllabus import Syllabus
 from app.models.lesson import Lesson
 from app.models.subject import Subject, ClassSubject
+from app.models.student_profile import StudentProfile
+from app.models.student_enrollment import StudentEnrollment
+from app.models.student_activity import StudentActivity
 from app.models.fees import (
     FeesType, FeesGroup, FeesMaster, FeesDiscount,
     FeesAssign, FeesPayment, FeesReminder
@@ -18,12 +21,15 @@ __all__ = [
     "Class",
     "Syllabus",
     "Lesson",
+    "Subject",
+    "ClassSubject",
+    "StudentProfile",
+    "StudentEnrollment",
+    "StudentActivity",
     "FeesType",
     "FeesGroup",
     "FeesMaster",
     "FeesDiscount",
-    "Subject",
-    "ClassSubject",
     "FeesAssign",
     "FeesPayment",
     "FeesReminder",

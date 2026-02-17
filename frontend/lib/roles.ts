@@ -9,6 +9,7 @@ import {
   GraduationCap,
   DollarSign,
   Wallet,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -39,6 +40,7 @@ const allNavItems: Record<string, NavItem> = {
   myFees: { name: 'My Fees', href: '/dashboard/fees/my-fees', icon: Wallet },
   analytics: { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   progress: { name: 'Progress', href: '/dashboard/progress', icon: GraduationCap },
+  students: { name: 'Students', href: '/dashboard/students', icon: UserCheck },
 }
 
 const navigationByRole: Record<UserRole, NavItem[]> = {
@@ -48,6 +50,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
     allNavItems.users,
     allNavItems.subjects,
     allNavItems.classes,
+    allNavItems.students,
     allNavItems.syllabi,
     allNavItems.lessons,
     allNavItems.fees,
@@ -57,6 +60,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
     allNavItems.users,
     allNavItems.subjects,
     allNavItems.classes,
+    allNavItems.students,
     allNavItems.syllabi,
     allNavItems.lessons,
     allNavItems.fees,
@@ -64,6 +68,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
   teacher: [
     allNavItems.dashboard,
     allNavItems.classes,
+    allNavItems.students,
     allNavItems.syllabi,
     allNavItems.lessons,
   ],
@@ -95,6 +100,7 @@ const quickActionsByRole: Record<UserRole, QuickAction[]> = {
   ],
   teacher: [
     { label: 'Create Class', href: '/dashboard/classes/create', description: 'Set up a new class', color: 'bg-blue-50 text-blue-700' },
+    { label: 'Manage Students', href: '/dashboard/students', description: 'View & enroll students', color: 'bg-teal-50 text-teal-700' },
     { label: 'Generate Syllabus', href: '/dashboard/syllabi/generate', description: 'AI-powered syllabus', color: 'bg-purple-50 text-purple-700' },
   ],
   student: [
@@ -124,6 +130,9 @@ const featurePermissions: Record<string, UserRole[]> = {
   'fees:view': ['super_admin', 'school_admin', 'student', 'parent'],
   'ai:generate': ['super_admin', 'school_admin', 'teacher'],
   'analytics:view': ['super_admin', 'school_admin', 'teacher'],
+  'students:view': ['super_admin', 'school_admin', 'teacher'],
+  'students:create': ['super_admin', 'school_admin', 'teacher'],
+  'students:edit': ['super_admin', 'school_admin', 'teacher'],
 }
 
 export function getNavigationForRole(role: string): NavItem[] {

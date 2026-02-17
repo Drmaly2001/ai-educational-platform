@@ -302,3 +302,111 @@ def remove_subject_from_class(
     db.commit()
 
     return None
+
+
+# ─── Student Enrollment Endpoints ────────────────────────────────────────────
+
+from app.models.student_enrollment import StudentEnrollment
+from app.models.student_activity import StudentActivity
+from app.models.lesson import Lesson as LessonModel
+from app.schemas.student import StudentEnrollmentCreate, StudentEnrollmentResponse
+
+
+@router.get("/{class_id}/students", response_model=List[dict])
+def list_class_students(
+    class_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """List all students enrolled in a class"""
+    cls = db.query(Class).filter(Class.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+
+    enrollments = db.query(StudentEnrollment).filter(
+        StudentEnrollment.class_id == class_id,
+        StudentEnrollment.status == "active",
+    ).all()
+
+    total_lessons = db.query(LessonModel).filter(LessonModel.class_id == class_id).count()
+
+    result = []
+    for e in enrollments:
+        student = e.student
+        profile = student.student_profile if student else None
+        lessons_viewed = db.query(StudentActivity).filter(
+            StudentActivity.student_id == e.student_id,
+            StudentActivity.class_id == class_id,
+            StudentActivity.activity_type == "lesson_view",
+        ).count()
+        result.append({
+            "enrollment_id": e.id,
+            "student_id": e.student_id,
+            "student_name": student.full_name if student else "",
+            "student_email": student.email if student else "",
+            "student_number": profile.student_number if profile else None,
+            "grade_level": profile.grade_level if profile else None,
+            "enrolled_at": e.enrolled_at,
+            "status": e.status,
+            "lessons_viewed": lessons_viewed,
+            "total_lessons": total_lessons,
+        })
+    return result
+
+
+@router.post("/{class_id}/students", response_model=dict, status_code=status.HTTP_201_CREATED)
+def enroll_student(
+    class_id: int,
+    data: StudentEnrollmentCreate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Enroll a student in a class"""
+    cls = db.query(Class).filter(Class.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+
+    student = db.query(User).filter(User.id == data.student_id, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+
+    existing = db.query(StudentEnrollment).filter(
+        StudentEnrollment.class_id == class_id,
+        StudentEnrollment.student_id == data.student_id,
+    ).first()
+    if existing:
+        if existing.status == "active":
+            raise HTTPException(status_code=400, detail="Student already enrolled in this class")
+        existing.status = "active"
+        db.commit()
+        return {"message": "Student re-enrolled successfully"}
+
+    enrollment = StudentEnrollment(
+        class_id=class_id,
+        student_id=data.student_id,
+        enrolled_by=current_user.id,
+    )
+    db.add(enrollment)
+    db.commit()
+    return {"message": "Student enrolled successfully"}
+
+
+@router.delete("/{class_id}/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def unenroll_student(
+    class_id: int,
+    student_id: int,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Unenroll a student from a class"""
+    enrollment = db.query(StudentEnrollment).filter(
+        StudentEnrollment.class_id == class_id,
+        StudentEnrollment.student_id == student_id,
+    ).first()
+
+    if not enrollment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Enrollment not found")
+
+    enrollment.status = "inactive"
+    db.commit()
+    return None

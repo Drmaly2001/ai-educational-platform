@@ -38,6 +38,7 @@ class Class(Base):
     syllabus = relationship("Syllabus", back_populates="classes")
     lessons = relationship("Lesson", back_populates="class_obj", cascade="all, delete-orphan")
     class_subjects = relationship("ClassSubject", back_populates="class_obj", cascade="all, delete-orphan")
+    enrollments = relationship("StudentEnrollment", back_populates="class_obj", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Class(id={self.id}, name='{self.name}', subject='{self.subject}')>"

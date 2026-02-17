@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import api from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import {
   ArrowLeft,
   Loader2,
@@ -60,6 +61,7 @@ interface LessonDetail {
 export default function LessonDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const [lesson, setLesson] = useState<LessonDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -68,6 +70,13 @@ export default function LessonDetailPage() {
       try {
         const response = await api.get(`/lessons/${params.id}`)
         setLesson(response.data)
+        // Auto-track lesson view for students
+        if (user?.role === 'student' && user?.id) {
+          api.post(`/students/${user.id}/activities`, {
+            activity_type: 'lesson_view',
+            lesson_id: Number(params.id),
+          }).catch(() => {/* silently ignore tracking errors */})
+        }
       } catch {
         router.push('/dashboard/lessons')
       } finally {
@@ -75,7 +84,7 @@ export default function LessonDetailPage() {
       }
     }
     fetchLesson()
-  }, [params.id, router])
+  }, [params.id, router, user])
 
   if (loading) {
     return (

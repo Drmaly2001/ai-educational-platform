@@ -29,6 +29,9 @@ class User(Base):
     # Relationships
     school = relationship("School", back_populates="users")
     fees_assigns = relationship("FeesAssign", back_populates="student", foreign_keys="[FeesAssign.student_id]")
+    student_profile = relationship("StudentProfile", back_populates="student", uselist=False)
+    enrollments = relationship("StudentEnrollment", back_populates="student", foreign_keys="[StudentEnrollment.student_id]")
+    activities = relationship("StudentActivity", back_populates="student", foreign_keys="[StudentActivity.student_id]")
 
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}', role='{self.role}')>"

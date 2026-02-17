@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { canAccess } from '@/lib/roles'
 import api from '@/lib/api'
-import { Plus, BookOpen, Loader2, Settings, Pencil } from 'lucide-react'
+import { Plus, BookOpen, Loader2, Settings, Pencil, Users } from 'lucide-react'
 
 interface ClassSubjectItem {
   id: number
@@ -126,6 +126,13 @@ export default function ClassesPage() {
                         title="Manage subjects"
                       >
                         <Settings className="h-4 w-4" />
+                      </Link>
+                      <Link
+                        href={`/dashboard/classes/${cls.id}/students`}
+                        className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                        title="Manage students"
+                      >
+                        <Users className="h-4 w-4" />
                       </Link>
                     </>
                   )}
